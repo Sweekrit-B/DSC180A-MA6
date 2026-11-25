@@ -15,3 +15,4 @@ Agents append here via the `/new-feature` skill; you append here by hand.
 - 2026-11-25: Add a value-based leak test: no feature may correlate above 0.95 with `casual`, `registered` or `cnt`. The name check misses a renamed copy; the strongest honest feature is 0.849, so 0.95 leaves room.
 - 2026-11-25: Check the raw CSV's SHA-256 in `load_raw()`. Fourth-fault fix: a Bash `cp` into `data/raw/` passes the hook and deny rules but now fails every stage with "raw data changed".
 - 2026-11-25: CLAUDE.md: added the `--target` command, the `/metrics-table` skill, and rules to classify new raw columns and never edit `RAW_SHA256`. 51 lines.
+- 2026-11-25: Exercise 5, deploy ridge over persistence. Test R^2 0.627 vs 0.510 outweighs a 33-ride MAE loss, because ridge misses big day-over-day swings far less (big-swing MAE 1,336 vs 2,281; 7 vs 17 misses over 2,000) at ~280 rides of extra error on ordinary days. Assumes a missed swing costs more than everyday error.
