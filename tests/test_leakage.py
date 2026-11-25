@@ -7,7 +7,7 @@ scores R^2 = 1.0 and looks brilliant while having learned nothing.
 import pandas as pd
 import pytest
 
-from src.config import FORBIDDEN, TARGET
+from src.config import FORBIDDEN, LEAKAGE_COLS, TARGET
 from src.features import build_features, feature_columns
 from src.ingest import load_raw
 
@@ -80,6 +80,19 @@ def test_temp_delta_3_uses_prior_calendar_days(feats):
         assert delta == pytest.approx(expected), f"bad temp_delta_3 at {date.date()}"
         checked += 1
     assert checked > 600, "too few rows actually verified"
+
+
+def test_no_feature_is_a_renamed_leak(feats):
+    """test_no_forbidden_features checks names; this checks values. A copy of
+    casual, registered or cnt under an innocent name correlates ~1.0 with it.
+    The strongest honest feature, cnt_roll_7, reaches 0.85 with cnt."""
+    cols = feature_columns(feats)
+    leaks = sorted(LEAKAGE_COLS)
+    corr = feats[cols + leaks].corr().loc[cols, leaks].abs()
+    feature, leak = corr.stack().idxmax()
+    assert corr.max().max() < 0.95, (
+        f"feature {feature!r} tracks {leak!r} (|corr| {corr.loc[feature, leak]:.3f}): a renamed leak?"
+    )
 
 
 def test_no_missing_values(feats):

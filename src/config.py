@@ -19,7 +19,6 @@ DATA_URL = (
     "https://raw.githubusercontent.com/christophM/"
     "interpretable-ml-book/master/data/bike.csv"
 )
-
 TARGET = "cnt"
 
 # --- Three reasons a column is kept out of the feature set --------------
@@ -44,6 +43,18 @@ UNVERIFIED_COLS = {"cnt_2d_bfr"}
 
 # What feature_columns() and the tests actually enforce.
 FORBIDDEN = LEAKAGE_COLS | TIME_INDEX_COLS | UNVERIFIED_COLS
+
+# --- Every other raw column, classified --------------------------------
+# tests/test_contract.py fails on any raw column in none of these sets or
+# FORBIDDEN, so a new column in the CSV cannot reach the model unreviewed.
+# (feature_columns() admits every numeric non-FORBIDDEN column, so without
+# this list a new numeric column would become a feature silently.)
+RAW_FEATURE_COLS = {"temp", "atemp", "hum", "windspeed"}  # used as-is
+ENCODED_COLS = {"holiday", "workday", "weather"}  # -> is_holiday, is_workday, weather_severity
+# String labels the pipeline ignores: dayofweek and month_sin/cos are
+# derived from dteday instead, and season is a coarser copy of the month.
+UNUSED_COLS = {"season", "mnth", "weekday"}
+DATE_COL = "dteday"
 
 # Temporal split: train on 2011, validate on H1 2012, test on H2 2012.
 TRAIN_END = "2011-12-31"

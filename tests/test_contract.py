@@ -3,7 +3,9 @@ import pandas as pd
 import pytest
 from sklearn.metrics import r2_score
 
-from src.config import LAG_WARMUP, TARGET
+from src.config import (
+    DATE_COL, ENCODED_COLS, FORBIDDEN, LAG_WARMUP, RAW, RAW_FEATURE_COLS, TARGET, UNUSED_COLS,
+)
 from src.features import build_features, feature_columns, reindex_to_calendar
 from src.ingest import load_raw
 from src.train import MODELS, TARGET_TRANSFORMS, temporal_split
@@ -66,3 +68,15 @@ def test_target_transform_round_trips(feats, name):
     back = inverse(forward(feats).to_numpy(), feats)
     assert back == pytest.approx(feats[TARGET].to_numpy())
 
+
+def test_every_raw_column_is_classified():
+    """A column added to data/raw/bike_daily.csv must be classified in
+    src/config.py before it can be used. feature_columns() admits any numeric
+    column not in FORBIDDEN, so an unclassified one would become a feature
+    with no review. Reads the CSV header directly, not through load_raw()."""
+    header = set(pd.read_csv(RAW, nrows=0).columns)
+    classified = FORBIDDEN | RAW_FEATURE_COLS | ENCODED_COLS | UNUSED_COLS | {DATE_COL}
+    unclassified = header - classified
+    assert not unclassified, (
+        f"unclassified raw columns {sorted(unclassified)}: add each to a set in src/config.py"
+    )
