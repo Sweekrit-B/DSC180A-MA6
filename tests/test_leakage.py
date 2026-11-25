@@ -57,6 +57,31 @@ def test_rolling_mean_excludes_today(feats):
         assert feats.set_index("dteday").cnt_roll_7[date] == pytest.approx(expected)
 
 
+def test_temp_delta_3_uses_prior_calendar_days(feats):
+    """temp_delta_3 on date d must equal temp[d] - mean(temp[d-3..d-1]),
+    with the window counted in calendar days, never including d itself.
+
+    Checked against the raw data, not the feature table, so a window that
+    silently spans the missing 2011-03-10 cannot agree with itself."""
+    # Named date, by hand from data/raw/bike_daily.csv. temp on 2012-06-20 is
+    # 28.7775; on 06-17, 06-18, 06-19 it is 19.8475, 18.711651, 24.351651.
+    # 28.7775 - (19.8475 + 18.711651 + 24.351651) / 3 = 7.807233
+    named = feats.set_index("dteday").temp_delta_3[pd.Timestamp("2012-06-20")]
+    assert named == pytest.approx(7.807233, abs=1e-6)
+
+    raw_temp = load_raw().set_index("dteday").temp
+    checked = 0
+    for date, delta in feats.set_index("dteday").temp_delta_3.items():
+        window = [date - pd.Timedelta(days=k) for k in range(1, 4)]
+        assert all(d in raw_temp.index for d in window), (
+            f"temp_delta_3 at {date.date()} has a window crossing a missing day"
+        )
+        expected = raw_temp[date] - sum(raw_temp[d] for d in window) / 3
+        assert delta == pytest.approx(expected), f"bad temp_delta_3 at {date.date()}"
+        checked += 1
+    assert checked > 600, "too few rows actually verified"
+
+
 def test_no_missing_values(feats):
     assert feats[feature_columns(feats)].isna().sum().sum() == 0
 
