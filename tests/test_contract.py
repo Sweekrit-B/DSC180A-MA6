@@ -6,7 +6,7 @@ from sklearn.metrics import r2_score
 from src.config import LAG_WARMUP, TARGET
 from src.features import build_features, feature_columns, reindex_to_calendar
 from src.ingest import load_raw
-from src.train import MODELS, temporal_split
+from src.train import MODELS, TARGET_TRANSFORMS, temporal_split
 
 
 @pytest.fixture(scope="module")
@@ -56,3 +56,13 @@ def test_persistence_baseline_is_reported():
     """The baseline that matters for a lag-driven model is 'yesterday again'.
     It must be in the comparison, whatever its score."""
     assert "baseline_persistence" in MODELS
+
+
+@pytest.mark.parametrize("name", sorted(TARGET_TRANSFORMS))
+def test_target_transform_round_trips(feats, name):
+    """inverse(forward(cnt)) must give cnt back exactly, or every score
+    reported for a transformed target is measuring the wrong thing."""
+    forward, inverse = TARGET_TRANSFORMS[name]
+    back = inverse(forward(feats).to_numpy(), feats)
+    assert back == pytest.approx(feats[TARGET].to_numpy())
+

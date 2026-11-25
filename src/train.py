@@ -48,6 +48,9 @@ class PersistenceBaseline(BaseEstimator, RegressorMixin):
 MODELS = {
     "baseline_mean": DummyRegressor(strategy="mean"),
     "baseline_persistence": PersistenceBaseline("cnt_lag_1"),
+    # Last week's average, unchanged. The anchor of the diff_roll7 target, so
+    # any model trained on that target must beat this, not just persistence.
+    "baseline_roll7": PersistenceBaseline("cnt_roll_7"),
     "ridge": make_pipeline(StandardScaler(), Ridge(alpha=1.0)),
     "hgb": HistGradientBoostingRegressor(random_state=0, max_iter=300),
 }
@@ -62,12 +65,27 @@ def temporal_split(df: pd.DataFrame):
     return train, valid, test
 
 
-def fit_and_score() -> dict:
+# Target transforms (Exercise 4). Each is (forward: frame -> z, inverse: z,
+# frame -> cnt). Models fit z and are scored on cnt. Baselines never use one.
+# diff_roll7 predicts the departure from last week's average: a level-free
+# target, so trees trained on 2011 are not capped at 2011's maximum. The
+# anchor cnt_roll_7 is built with shift(1), so it is known at prediction time.
+TARGET_TRANSFORMS = {
+    "none": (lambda d: d[TARGET], lambda z, d: z),
+    "diff_roll7": (lambda d: d[TARGET] - d["cnt_roll_7"], lambda z, d: z + d["cnt_roll_7"].to_numpy()),
+}
+
+
+def fit_and_score(target: str = "none", include_test: bool = True) -> dict:
+    """include_test=False scores validation only, for model selection."""
+    forward, inverse = TARGET_TRANSFORMS[target]
     df = pd.read_parquet(PROCESSED)
     cols = feature_columns(df)
     train, valid, test = temporal_split(df)
+    splits = [("valid", valid)] + ([("test", test)] if include_test else [])
 
     results = {
+        "target": target,
         "n_features": len(cols),
         "features": cols,
         "n_train": len(train),
@@ -75,19 +93,29 @@ def fit_and_score() -> dict:
         "n_test": len(test),
     }
     for name, model in MODELS.items():
-        model.fit(train[cols], train[TARGET])
-        results[name] = {
-            split: {
-                "r2": round(float(r2_score(part[TARGET], model.predict(part[cols]))), 4),
-                "mae": round(float(mean_absolute_error(part[TARGET], model.predict(part[cols]))), 1),
+        fwd, inv = TARGET_TRANSFORMS["none"] if name.startswith("baseline_") else (forward, inverse)
+        model.fit(train[cols], fwd(train))
+        results[name] = {}
+        for split, part in splits:
+            pred = inv(model.predict(part[cols]), part)
+            results[name][split] = {
+                "r2": round(float(r2_score(part[TARGET], pred)), 4),
+                "mae": round(float(mean_absolute_error(part[TARGET], pred)), 1),
             }
-            for split, part in [("valid", valid), ("test", test)]
-        }
     return results
 
 
 if __name__ == "__main__":
-    res = fit_and_score()
-    METRICS.parent.mkdir(parents=True, exist_ok=True)
-    METRICS.write_text(json.dumps(res, indent=2))
-    print(json.dumps({k: v for k, v in res.items() if k != "features"}, indent=2))
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--target", choices=sorted(TARGET_TRANSFORMS), default="none",
+                        help="target transform; only 'none' writes reports/metrics.json")
+    args = parser.parse_args()
+    res = fit_and_score(args.target)
+    # The untransformed pipeline owns METRICS; a transformed run never overwrites it.
+    out = METRICS if args.target == "none" else METRICS.with_name(f"metrics_{args.target}.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(res, indent=2))
+    print(f"OK train: target={args.target} -> {out.name}; valid r2 "
+          + ", ".join(f"{k} {v['valid']['r2']}" for k, v in res.items() if isinstance(v, dict)))
