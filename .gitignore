@@ -2,6 +2,7 @@
 __pycache__/
 .pytest_cache/
 data/processed/
-reports/
-audit.jsonl
+# reports/ is tracked (metrics.json, audit.jsonl); transformed runs are not.
+reports/metrics_*.json
+/audit.jsonl
 .claude/settings.local.json
