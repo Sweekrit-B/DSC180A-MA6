@@ -68,6 +68,12 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     # --- Weather: measured same-day, available to a forecaster ----------
     out["weather_severity"] = encode_weather(out.weather)
 
+    # Today's temp relative to the previous 3 calendar days: does a warm
+    # day after a cold snap draw more riders than the same temp mid-heatwave?
+    # shift(1) keeps today out of the baseline; the gap day is NaN after
+    # reindexing, so windows that span it are dropped, not silently shortened.
+    out["temp_delta_3"] = out.temp - out.temp.shift(1).rolling(3).mean()
+
     # --- Lagged target: past values only. shift(1) is the whole ballgame;
     # without it, cnt_roll_7 would contain today's count. -----------------
     # If you add a longer lag, raise LAG_WARMUP in src/config.py.
