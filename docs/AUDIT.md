@@ -1,12 +1,26 @@
 # Audit of a teammate's repository (Exercise 3)
 
-Repository: https://github.com/lindbergryan04/DSC180A-MA6 at commit `82104b1`.
-Diff reviewed: everything since their starter commit `b48e5e4`.
-Auditor: the `/leakage-auditor` subagent from `.claude/agents/leakage-auditor.md`,
-run on 2026-11-25 against a fresh clone. It was told not to modify the
-clone, not to use the network, and not to touch `data/raw/`.
+Audited https://github.com/lindbergryan04/DSC180A-MA6 at `82104b1` (diff
+since their starter `b48e5e4`) with `/leakage-auditor`, on a fresh clone.
 
-## Auditor output (verbatim)
+| Check | Result |
+|---|---|
+| 1-4: leakage, temporal order, calendar gaps, row loss | pass |
+| Finding 1: Exercise 4 booster reported without baselines | test MAE 874.0 loses to persistence 840.1 |
+| Finding 2: Exercise 5 picks persistence on test | on validation ridge wins MAE, 830.6 vs 900.6 |
+| Their `metrics.json` | reproduces byte for byte |
+
+## My verdict
+
+Neither finding is leakage or changes a reported number; I checked both
+against their `metrics.json`. I agree with Finding 2, the only one that
+changes a conclusion: the Exercise 5 choice flips on validation. Citing test
+MAE is fair, since the exercise frames it that way, but the reversal should
+be stated. I agree with Finding 1: without the persistence row, their
+Exercise 4 paragraph overstates the booster.
+
+<details>
+<summary>Auditor output (verbatim)</summary>
 
 ```
 Audit of lindbergryan04/DSC180A-MA6, the diff since starter commit b48e5e4
@@ -37,21 +51,4 @@ EVIDENCE:
 - `git status --short` → empty
 ```
 
-(The auditor's `.venv/bin/python` stands for this repo's virtualenv interpreter,
-run from inside the clone.)
-
-## My verdict
-
-Neither finding is leakage, and neither changes a number in their Results
-table, which the auditor reproduced exactly. I checked the figures both
-findings rest on against their committed `reports/metrics.json` and they
-match. I agree with Finding 2, and it is the one that changes a conclusion.
-Their Exercise 5 recommends persistence because its test MAE is lower (840.1
-vs 947.7), but on validation ridge wins MAE (830.6 vs 900.6), so the
-recommendation was made on the test set and would flip on validation. I
-disagree only with the auditor's suggested fix: the exercise itself frames
-the comparison in test numbers, so citing test MAE is fair, as long as the
-paragraph says the ranking reverses on validation. I agree with Finding 1 as
-a missing baseline. Their transformed booster beats ridge on test MAE (874.0
-vs 947.7) but loses to persistence (840.1), so the Exercise 4 paragraph
-overstates it, though again no reported number is wrong.
+</details>
