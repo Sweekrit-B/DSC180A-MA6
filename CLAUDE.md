@@ -9,6 +9,11 @@ rides) from calendar, weather, and lagged-demand features.
 - `make train` - fit models, write `reports/metrics.json`
 - `make test` - pytest; run this before claiming anything works
 - `make all` - the three pipeline stages in order
+- `python -m src.train --target diff_roll7` - Exercise 4 transformed run.
+  Writes `reports/metrics_diff_roll7.json` (gitignored). The committed
+  `reports/metrics.json` always comes from untransformed `make all`.
+- `/metrics-table [file]` - put scores into REPORT.md from the JSON.
+  Never retype a number; the report must match `metrics.json` digit for digit.
 
 ## Non-negotiable rules
 - **Never** put `casual` or `registered` in a feature set:
@@ -23,6 +28,11 @@ rides) from calendar, weather, and lagged-demand features.
 - Report the mean baseline **and** the persistence baseline (yesterday's
   count) alongside every model. A negative R^2 is a finding, not a bug
   to hide.
+- Every raw column must be in one set in `src/config.py`
+  (`test_every_raw_column_is_classified`). Classify a new column there,
+  with its reason, before using it.
+- If `load_raw()` reports "raw data changed", restore the CSV with
+  `git restore`. Never edit `RAW_SHA256` to make it pass.
 
 ## Style
 - Standard library, pandas, scikit-learn only. No new dependencies
