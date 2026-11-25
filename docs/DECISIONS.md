@@ -13,3 +13,4 @@ Agents append here via the `/new-feature` skill; you append here by hand.
 - 2026-11-25: Add `baseline_roll7` (predict last week's mean) to every run. It is the anchor of `diff_roll7`, so a transformed model must beat it, not just persistence. Valid R^2 0.5945, above persistence (0.4507).
 - 2026-11-25: Classify every raw column in `src/config.py` and fail `make test` on any unclassified one. `feature_columns()` admits any numeric non-FORBIDDEN column, so a new CSV column would otherwise become a feature unreviewed.
 - 2026-11-25: Add a value-based leak test: no feature may correlate above 0.95 with `casual`, `registered` or `cnt`. The name check misses a renamed copy; the strongest honest feature is 0.849, so 0.95 leaves room.
+- 2026-11-25: Check the raw CSV's SHA-256 in `load_raw()`. Fourth-fault fix: a Bash `cp` into `data/raw/` passes the hook and deny rules but now fails every stage with "raw data changed".
