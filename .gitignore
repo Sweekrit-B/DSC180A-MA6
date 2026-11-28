@@ -6,3 +6,6 @@ data/processed/
 reports/metrics_*.json
 /audit.jsonl
 .claude/settings.local.json
+
+# graphify knowledge graph (local)
+graphify-out/
